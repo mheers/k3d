@@ -24,6 +24,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 )
@@ -45,7 +46,34 @@ func (d Docker) GetImages(ctx context.Context) ([]string, error) {
 	var images []string
 	for _, image := range imageSummary {
 		images = append(images, image.RepoTags...)
+		images = append(images, image.RepoDigests...)
+		images = append(images, repoTagDigests(image)...)
 	}
 
 	return images, nil
+}
+
+func repoTagDigests(image types.ImageSummary) []string {
+	if len(image.RepoTags) == 0 {
+		return []string{}
+	}
+
+	base := strings.Split(image.RepoTags[0], ":")[0]
+	tags := []string{}
+	for _, tag := range image.RepoTags {
+		tags = append(tags, strings.Split(tag, ":")[1])
+	}
+
+	digests := []string{}
+	for _, digest := range image.RepoDigests {
+		digests = append(digests, strings.Split(digest, "@")[1])
+	}
+
+	tagDigests := []string{}
+	for _, tag := range tags {
+		for _, digest := range digests {
+			tagDigests = append(tagDigests, fmt.Sprintf("%s:%s@%s", base, tag, digest))
+		}
+	}
+	return tagDigests
 }
